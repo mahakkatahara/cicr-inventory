@@ -324,7 +324,7 @@ class Background3D {
             if (theme === 'light') {
                 this.scene.fog.color.setHex(0xe8ebf5);
             } else {
-                this.scene.fog.color.setHex(0x151b13);
+                this.scene.fog.color.setHex(0x0d201f);
             }
         }
         this.setParticleColorsForTheme(theme);
@@ -340,9 +340,9 @@ class Background3D {
             c1 = new THREE.Color(0x9c78ed); // Robo Lab Purple
             c2 = new THREE.Color(0xf5b8eb); // Robo Lab Soft Pink
         } else {
-            // Default Midnight Mono (Muted Sage & Warm Cream)
-            c1 = new THREE.Color(0x758071);
-            c2 = new THREE.Color(0xe9ddc6);
+            // Verdant Vault (Muted Sage & Warm Beige)
+            c1 = new THREE.Color(0x677d6a); // #677D6A Muted sage green
+            c2 = new THREE.Color(0xd6bd98); // #D6BD98 Warm beige
         }
 
         for (let i = 0; i < count; i++) {
@@ -1239,20 +1239,100 @@ class DashboardManager {
             lucide.createIcons();
         }
 
+        // Reparent modal views directly to document.body for true viewport fixed overlay rendering
+        ['hardware-logs-view', 'profile-view', 'developers-view', 'admin-view'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.parentElement !== document.body) {
+                document.body.appendChild(el);
+            }
+        });
+
         // 1. Sidebar Nav click listeners
         const sidebarLinks = document.querySelectorAll('.sidebar-nav-link');
-        const sections = document.querySelectorAll('#app-main-content > section');
+        const sections = document.querySelectorAll('section');
         const breadcrumbActive = document.getElementById('breadcrumb-current');
+        let currentViewSection = 'dashboard-view';
+
+        const closeAdminPortal = () => {
+            const adminSection = document.getElementById('admin-view');
+            if (adminSection) {
+                adminSection.classList.remove('active');
+                adminSection.style.setProperty('display', 'none', 'important');
+            }
+            document.body.classList.remove('view-admin-view');
+            document.body.classList.remove('view-modal-open');
+            sidebarLinks.forEach(link => {
+                const target = (link as HTMLElement).dataset.target;
+                if (target === currentViewSection) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+            if (breadcrumbActive) {
+                const nameMap: Record<string, string> = {
+                    'dashboard-view': 'DASHBOARD',
+                    'projects-view': 'PROJECTS',
+                    'meetings-view': 'MEETINGS',
+                    'events-view': 'EVENTS',
+                    'inventory-view': 'INVENTORY',
+                    'hardware-logs-view': 'LOGS',
+                    'developers-view': 'MEET THE DEVELOPERS',
+                    'profile-view': 'MY PROFILE',
+                };
+                breadcrumbActive.textContent = nameMap[currentViewSection] || currentViewSection.toUpperCase();
+            }
+        };
 
         const switchSection = (targetId: string) => {
+            const isModalTarget = ['hardware-logs-view', 'developers-view', 'profile-view', 'admin-view'].includes(targetId);
+            document.body.classList.toggle('view-modal-open', isModalTarget);
+
+            if (targetId === 'admin-view') {
+                if (ModalManager.getCurrentRole() !== 'ADMIN') {
+                    ToastManager.show('Access Restricted', 'Admin privileges required to access Admin Portal.', 'warning');
+                    return;
+                }
+                const adminSection = document.getElementById('admin-view');
+                if (adminSection) {
+                    adminSection.classList.add('active');
+                    adminSection.style.setProperty('display', 'flex', 'important');
+                }
+                document.body.classList.add('view-admin-view');
+                sidebarLinks.forEach(link => {
+                    const target = (link as HTMLElement).dataset.target;
+                    if (target === 'admin-view') {
+                        link.classList.add('active');
+                    }
+                });
+                if (breadcrumbActive) {
+                    breadcrumbActive.textContent = 'ADMIN CONTROL CENTER';
+                }
+                AdminManager.loadUsers(true);
+                AdminManager.loadHardwareRequests(true);
+                AdminManager.loadAuditLogs();
+                if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                    lucide.createIcons();
+                }
+                closeMobileSidebar();
+                return;
+            }
+
+            // Normal section switch:
+            closeAdminPortal();
+            currentViewSection = targetId;
+
             sections.forEach(node => {
                 const sec = node as HTMLElement;
+                if (sec.id === 'admin-view') return;
                 if (sec.id === targetId) {
                     sec.classList.add('active');
                     sec.style.display = 'flex';
                     if (sec.id === 'inventory-view' || sec.id === 'projects-view' || sec.id === 'meetings-view' || sec.id === 'events-view' || sec.id === 'developers-view' || sec.id === 'profile-view' || sec.id === 'hardware-logs-view') {
                         sec.style.display = 'block';
                     }
+                } else if (sec.id === 'dashboard-view' && isModalTarget) {
+                    sec.style.display = 'block';
                 } else {
                     sec.classList.remove('active');
                     sec.style.display = 'none';
@@ -1263,7 +1343,7 @@ class DashboardManager {
             document.body.classList.toggle('view-dashboard-view', targetId === 'dashboard-view');
             document.body.classList.toggle('view-developers-view', targetId === 'developers-view');
             document.body.classList.toggle('view-profile-view', targetId === 'profile-view');
-            document.body.classList.toggle('view-admin-view', targetId === 'admin-view');
+            document.body.classList.toggle('view-admin-view', false);
             document.body.classList.toggle('view-inventory-view', targetId === 'inventory-view');
             document.body.classList.toggle('view-hardware-logs-view', targetId === 'hardware-logs-view');
 
@@ -1303,18 +1383,6 @@ class DashboardManager {
                 this.renderInventory();
             }
 
-            // If switching to admin-view, load admin data
-            if (targetId === 'admin-view') {
-                if (ModalManager.getCurrentRole() !== 'ADMIN') {
-                    ToastManager.show('Access Restricted', 'Admin privileges required to access Admin Portal.', 'warning');
-                    switchSection('inventory-view');
-                    return;
-                }
-                AdminManager.loadUsers(true);
-                AdminManager.loadHardwareRequests(true);
-                AdminManager.loadAuditLogs();
-            }
-
             // If switching to hardware-logs-view, render logs & component history
             if (targetId === 'hardware-logs-view') {
                 if (typeof HardwareLedgerManager !== 'undefined') {
@@ -1343,6 +1411,41 @@ class DashboardManager {
 
         (this as any).switchSection = switchSection;
         (window as any).switchSection = switchSection;
+        (window as any).closeAdminPortal = closeAdminPortal;
+
+        // Admin Portal modal close listeners
+        const closeAdminBtn = document.getElementById('admin-portal-close-btn');
+        closeAdminBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeAdminPortal();
+        });
+
+        const adminViewEl = document.getElementById('admin-view');
+        adminViewEl?.addEventListener('click', (e) => {
+            if (e.target === adminViewEl) {
+                closeAdminPortal();
+            }
+        });
+
+        ['hardware-logs-view', 'developers-view', 'profile-view'].forEach(viewId => {
+            const el = document.getElementById(viewId);
+            el?.addEventListener('click', (e) => {
+                if (e.target === el) {
+                    switchSection('dashboard-view');
+                }
+            });
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const adminEl = document.getElementById('admin-view');
+                if (adminEl && adminEl.classList.contains('active')) {
+                    closeAdminPortal();
+                }
+            }
+        });
+
         switchSection('dashboard-view');
 
         sidebarLinks.forEach(link => {
@@ -1377,7 +1480,21 @@ class DashboardManager {
             });
         }
 
-        // Floating Navbar component logs, developers & profile links
+        // Floating Navbar navigation links
+        const navDash = document.getElementById('nav-dashboard');
+        if (navDash) {
+            navDash.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchSection('dashboard-view');
+            });
+        }
+        const navInv = document.getElementById('nav-inventory');
+        if (navInv) {
+            navInv.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchSection('inventory-view');
+            });
+        }
         const navHwLogs = document.getElementById('nav-hardware-logs');
         if (navHwLogs) {
             navHwLogs.addEventListener('click', () => switchSection('hardware-logs-view'));
@@ -5529,7 +5646,7 @@ class AdminManager {
             container.innerHTML = `
                 <div class="admin-empty-state">
                     <i data-lucide="package-check"></i>
-                    <p>No pending component requests in queue. Vault operations nominal.</p>
+                    <p>No pending hardware requests.<br>Everything is currently up to date.</p>
                 </div>
             `;
             renderLucideIcons(container);
@@ -5874,7 +5991,7 @@ class AdminManager {
             container.innerHTML = `
                 <div class="admin-empty-state">
                     <i data-lucide="check-circle-2"></i>
-                    <p>No pending registration requests. All accounts are up to date!</p>
+                    <p>No registration requests waiting for approval.<br>All member requests have been reviewed.</p>
                 </div>
             `;
             renderLucideIcons(container);
@@ -5963,19 +6080,6 @@ class AdminManager {
                 </div>
             `;
 
-            // Cyber avatar styles
-            const avatarGradient = isMaster
-                ? 'linear-gradient(135deg, #00f0ff, #facc15)'
-                : u.role === 'ADMIN'
-                    ? 'linear-gradient(135deg, #ff007a, #9333ea)'
-                    : 'linear-gradient(135deg, #00f0ff, #3b82f6)';
-
-            const avatarShadow = isMaster
-                ? '0 0 10px rgba(0, 240, 255, 0.4), 0 0 4px rgba(250, 204, 21, 0.3)'
-                : u.role === 'ADMIN'
-                    ? '0 0 10px rgba(255, 0, 122, 0.35)'
-                    : '0 0 8px rgba(0, 240, 255, 0.2)';
-
             const roleBadge = isMaster
                 ? `<span class="badge-role master"><i data-lucide="crown"></i> MASTER ADMIN</span>`
                 : u.role === 'ADMIN'
@@ -5984,7 +6088,7 @@ class AdminManager {
 
             let actionsHtml = '';
             if (isMaster) {
-                actionsHtml = `<span class="badge-perm-admin"><i data-lucide="shield-check"></i> ROOT ACCESS</span>`;
+                actionsHtml = `<span class="badge-perm-admin"><i data-lucide="lock"></i> ROOT ACCESS</span>`;
             } else if (u.email.toLowerCase() === 'mahakkatahara.mk@gmail.com') {
                 const deleteBtn = `<button class="btn-table-action btn-del" onclick="window.adminDeleteUser('${u.id}', '${this.escapeHtml(u.name)}')" title="Permanently Delete User"><i data-lucide="trash-2"></i></button>`;
                 actionsHtml = `<span class="badge-member-only">MEMBER ONLY</span> ${deleteBtn}`;
@@ -6005,7 +6109,7 @@ class AdminManager {
                 <tr data-user-id="${u.id}">
                     <td>
                         <div class="user-cell-name">
-                            <div class="user-cell-avatar admin-user-clickable" data-user-id="${u.id}" data-user-name="${this.escapeHtml(u.name || 'Anonymous')}" data-user-email="${this.escapeHtml(u.email)}" data-user-roll="${this.escapeHtml(u.roll_number || '')}" data-user-batch="${this.escapeHtml(u.batch || '')}" title="Inspect Profile" style="background: ${avatarGradient}; box-shadow: ${avatarShadow};">
+                            <div class="user-cell-avatar admin-user-clickable" data-user-id="${u.id}" data-user-name="${this.escapeHtml(u.name || 'Anonymous')}" data-user-email="${this.escapeHtml(u.email)}" data-user-roll="${this.escapeHtml(u.roll_number || '')}" data-user-batch="${this.escapeHtml(u.batch || '')}" title="Inspect Profile">
                                 ${u.name ? u.name.charAt(0).toUpperCase() : 'U'}
                             </div>
                             <div class="user-cell-meta-wrap">
@@ -6704,7 +6808,7 @@ class AdminManager {
                             <span class="audit-desc-text">${this.escapeHtml(log.description || 'Action recorded')}</span>
                             <div class="audit-meta-chips">
                                 <span class="audit-actor-chip"><i data-lucide="user" style="width: 11px; height: 11px;"></i> <strong>${actorName}</strong> ${actorEmail ? `(${actorEmail})` : ''}</span>
-                                ${log.inventory?.name ? `<span class="audit-actor-chip" style="color: #00f0ff;"><i data-lucide="box" style="width: 11px; height: 11px;"></i> ${log.inventory.name}</span>` : ''}
+                                ${log.inventory?.name ? `<span class="audit-actor-chip" style="color: #D6BD98;"><i data-lucide="box" style="width: 11px; height: 11px;"></i> ${log.inventory.name}</span>` : ''}
                             </div>
                         </div>
                     </div>
@@ -7633,7 +7737,9 @@ class ProfileViewManager {
                 const browseBtn = document.getElementById('profile-browse-vault-btn');
                 if (browseBtn) {
                     browseBtn.addEventListener('click', () => {
-                        if ((window as any).dashboard && (window as any).dashboard.switchSection) {
+                        if (typeof (window as any).switchSection === 'function') {
+                            (window as any).switchSection('inventory-view');
+                        } else if ((window as any).dashboard && (window as any).dashboard.switchSection) {
                             (window as any).dashboard.switchSection('inventory-view');
                         }
                     });
@@ -9129,7 +9235,7 @@ class ThemeManager {
         this.headerThemeSelectEl = document.getElementById('header-theme-select') as HTMLSelectElement;
 
         const storedTheme = localStorage.getItem('cicr_vault_theme') || localStorage.getItem('cicr_theme');
-        // Safe migration for legacy and invalid themes -> default to Midnight Mono ('mono')
+        // Safe migration for legacy and invalid themes -> default to Verdant Vault ('mono')
         let defaultTheme = 'mono';
         if (storedTheme === 'light') {
             defaultTheme = 'light';

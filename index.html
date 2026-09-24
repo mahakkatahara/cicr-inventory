@@ -76,7 +76,7 @@
     <!-- 3D Canvas Background -->
     <canvas id="canvas-3d"></canvas>
 
-    <!-- Dedicated Midnight Mono Viewport Background Layer (Hidden by default; active strictly in Midnight Mono) -->
+    <!-- Dedicated Verdant Vault Viewport Background Layer (Hidden by default; active strictly in Verdant Vault) -->
     <div class="mono-viewport-bg" id="mono-viewport-bg" aria-hidden="true">
         <div class="mono-bg-layer mono-bg-ambient"></div>
         <div class="mono-bg-layer mono-bg-circuit-top-left"></div>
@@ -235,8 +235,8 @@
             </div>
 
             <div class="nav-links">
-                <a class="nav-link active" id="nav-dashboard"><i data-lucide="layout-dashboard"></i> Dashboard</a>
-                <a class="nav-link" id="nav-inventory"><i data-lucide="layers"></i> Inventory</a>
+                <a class="nav-link active" id="nav-dashboard" onclick="event.preventDefault(); window.switchSection && window.switchSection('dashboard-view')"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+                <a class="nav-link" id="nav-inventory" onclick="event.preventDefault(); window.switchSection && window.switchSection('inventory-view')"><i data-lucide="layers"></i> Inventory</a>
                 <a class="nav-link" id="nav-add-item"><i data-lucide="plus-circle"></i> Add Component</a>
                 <a class="nav-link" id="nav-about"><i data-lucide="info"></i> About</a>
                 <a class="nav-link" id="nav-hardware-logs" style="display: none !important;"
@@ -255,7 +255,7 @@
                 <div class="nav-theme-box">
                     <i data-lucide="palette" class="nav-theme-icon"></i>
                     <select id="nav-theme-select" title="Switch Theme">
-                        <option value="mono" selected>Midnight Mono</option>
+                        <option value="mono" selected>Verdant Vault</option>
                         <option value="light">Robo Lab</option>
                     </select>
                 </div>
@@ -481,7 +481,7 @@
                     <div class="header-theme-box">
                         <i data-lucide="palette" class="header-theme-icon"></i>
                         <select id="header-theme-select" title="Switch Theme">
-                            <option value="mono" selected>Midnight Mono</option>
+                            <option value="mono" selected>Verdant Vault</option>
                             <option value="light">Robo Lab</option>
                         </select>
                     </div>
@@ -729,6 +729,9 @@
                 <!-- Section: Meet The Developers & Mentors (GDG JIIT Style Interactive Showcase) -->
                 <section class="developers-section reveal" id="developers-view" style="display: none;">
                     <div class="team-showcase-container">
+                        <button type="button" class="view-modal-close-btn" data-close-view="developers-view" title="Close Showcase" aria-label="Close Showcase" onclick="window.switchSection && window.switchSection('dashboard-view')">
+                            <i data-lucide="x"></i>
+                        </button>
                         <!-- Top Header -->
                         <div class="team-showcase-header">
 
@@ -811,6 +814,9 @@
                 <!-- Section: Member Profile & Equipment Access Pass (CICR Robotics Lab) -->
                 <section class="profile-layout-section reveal" id="profile-view" style="display: none;">
                     <div class="profile-view-container">
+                        <button type="button" class="view-modal-close-btn" data-close-view="profile-view" title="Close Profile" aria-label="Close Profile" onclick="window.switchSection && window.switchSection('dashboard-view')">
+                            <i data-lucide="x"></i>
+                        </button>
                         <!-- Clean Aesthetic Profile Hero Banner -->
                         <div class="profile-clean-hero glass">
                             <div class="profile-hero-left">
@@ -881,11 +887,11 @@
                                         </div>
                                         <div>
                                             <h3 class="profile-card-heading">Member Details</h3>
-                                            <p class="profile-card-subheading">Verified student credentials & lab
-                                                authorization</p>
+                                            <p class="profile-card-subheading">Verified student credentials & lab authorization</p>
                                         </div>
                                     </div>
-                                                            <div class="profile-details-list">
+                                </div>
+                                <div class="profile-details-list">
                                     <div class="profile-detail-row">
                                         <span class="detail-label"><i data-lucide="user"></i> Full Name</span>
                                         <span class="detail-val" id="cred-full-name">—</span>
@@ -906,7 +912,7 @@
                                         <span class="detail-label"><i data-lucide="shield"></i> Authorization</span>
                                         <span class="detail-val" id="cred-role">—</span>
                                     </div>
-                                </div>                    </div>
+                                </div>
                             </div>
 
                             <!-- Right: Borrowed Components Desk -->
@@ -918,8 +924,7 @@
                                         </div>
                                         <div>
                                             <h3 class="profile-card-heading">Borrowed Components</h3>
-                                            <p class="profile-card-subheading">Hardware currently issued under your name
-                                            </p>
+                                            <p class="profile-card-subheading">Hardware currently issued under your name</p>
                                         </div>
                                     </div>
                                     <span class="profile-badge-counter" id="profile-active-loans-badge">0 Active</span>
@@ -942,39 +947,56 @@
                                 <div class="admin-shield-icon">
                                     <i data-lucide="shield-check"></i>
                                 </div>
-                                <div>
+                                <div class="admin-header-text-block">
                                     <span class="admin-header-tag">ADMIN CONTROL CENTER</span>
                                     <h2 class="admin-header-title">Admin Management & Issue Approvals</h2>
-                                    <p class="admin-header-desc">Review component issue requests, manage member
-                                        approvals, and monitor vault telemetry.</p>
                                 </div>
                             </div>
-                            <div class="admin-header-stats">
-                                <div class="admin-stat-box stat-purple">
-                                    <span class="admin-stat-num" id="admin-stat-hw-pending">0</span>
-                                    <span class="admin-stat-lbl">Hardware Requests</span>
+                            <div class="admin-header-right-wrap">
+                                <div class="admin-header-stats">
+                                    <div class="admin-stat-box stat-purple">
+                                        <span class="admin-stat-num" id="admin-stat-hw-pending">0</span>
+                                        <span class="admin-stat-lbl">Hardware Requests</span>
+                                    </div>
+                                    <div class="admin-stat-box stat-pink">
+                                        <span class="admin-stat-num" id="admin-stat-pending">0</span>
+                                        <span class="admin-stat-lbl">Account Approvals</span>
+                                    </div>
+                                    <div class="admin-stat-box stat-green">
+                                        <span class="admin-stat-num" id="admin-stat-approved">0</span>
+                                        <span class="admin-stat-lbl">Approved Members</span>
+                                    </div>
+                                    <div class="admin-stat-box stat-cyan">
+                                        <span class="admin-stat-num" id="admin-stat-admins">0</span>
+                                        <span class="admin-stat-lbl">Admins</span>
+                                    </div>
+                                    <div class="admin-stat-box stat-yellow">
+                                        <span class="admin-stat-num" id="admin-stat-total-logs">0</span>
+                                        <span class="admin-stat-lbl">System Logs</span>
+                                    </div>
                                 </div>
-                                <div class="admin-stat-box stat-pink">
-                                    <span class="admin-stat-num" id="admin-stat-pending">0</span>
-                                    <span class="admin-stat-lbl">Account Approvals</span>
-                                </div>
-                                <div class="admin-stat-box stat-green">
-                                    <span class="admin-stat-num" id="admin-stat-approved">0</span>
-                                    <span class="admin-stat-lbl">Approved Members</span>
-                                </div>
-                                <div class="admin-stat-box stat-cyan">
-                                    <span class="admin-stat-num" id="admin-stat-admins">0</span>
-                                    <span class="admin-stat-lbl">Admins</span>
-                                </div>
-                                <div class="admin-stat-box stat-yellow">
-                                    <span class="admin-stat-num" id="admin-stat-total-logs">0</span>
-                                    <span class="admin-stat-lbl">System Logs</span>
-                                </div>
+                                <!-- Close button for Admin Portal Modal -->
+                                <button type="button" class="admin-modal-close-btn close-modal" id="admin-portal-close-btn" title="Close Admin Portal" aria-label="Close Admin Portal">
+                                    <i data-lucide="x"></i>
+                                </button>
                             </div>
                         </div>
 
                         <!-- Queues Dual Column Grid -->
                         <div class="admin-queues-split-grid">
+                            <!-- Decorative Command Center Info Card (Robo Lab Command Banner) -->
+                            <div class="admin-command-info-banner">
+                                <div class="command-banner-header">
+                                    <div class="command-geo-icon">
+                                        <i data-lucide="cpu"></i>
+                                    </div>
+                                    <div class="command-banner-titles">
+                                        <span class="command-banner-tag">REQUEST COMMAND CENTER</span>
+                                        <h3 class="command-banner-title">Requests & Approvals</h3>
+                                    </div>
+                                </div>
+                                <p class="command-banner-desc">Monitor and manage all incoming hardware requests and member registrations in real time.</p>
+                            </div>
                             <!-- Hardware Issue Requests Queue -->
                             <div class="admin-block-card glass" id="admin-hardware-requests-block">
                                 <div class="admin-block-header">
@@ -994,7 +1016,7 @@
                                     <!-- Dynamic hardware requests injected here -->
                                     <div class="admin-empty-state">
                                         <i data-lucide="package-check"></i>
-                                        <p>No pending component requests in queue. Vault operations nominal.</p>
+                                        <p>No pending hardware requests.<br>Everything is currently up to date.</p>
                                     </div>
                                 </div>
                             </div>
@@ -1017,7 +1039,7 @@
                                     <!-- Dynamic pending items injected here -->
                                     <div class="admin-empty-state">
                                         <i data-lucide="check-circle-2"></i>
-                                        <p>No pending registration requests. All members reviewed!</p>
+                                        <p>No registration requests waiting for approval.<br>All member requests have been reviewed.</p>
                                     </div>
                                 </div>
                             </div>
@@ -1178,6 +1200,9 @@
                 <!-- Section: Component Issue & Return Ledger (Core Workspace - Just below Admin Portal - Admin Only) -->
                 <section class="hardware-logs-section reveal" id="hardware-logs-view">
                     <div class="hw-ledger-container">
+                        <button type="button" class="view-modal-close-btn" data-close-view="hardware-logs-view" title="Close Logs" aria-label="Close Logs" onclick="window.switchSection && window.switchSection('dashboard-view')">
+                            <i data-lucide="x"></i>
+                        </button>
                         <!-- Top Banner Header -->
                         <div class="hw-ledger-header-card glass">
                             <div class="hw-ledger-header-left">
