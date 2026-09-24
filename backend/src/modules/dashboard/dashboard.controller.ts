@@ -134,12 +134,22 @@ export const getAuditLogs = async (req: AuthRequest, res: Response) => {
     });
 
     // 4. Query filtered logs list
-    let query = dbRead
+    const page = Math.max(1, parseInt(req.query.page as string || '1', 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.limit as string || '50', 10) || 50));
+    const hasPagination = req.query.page !== undefined || (req.query.limit !== undefined && Number(req.query.limit) <= 100);
+
+    let query: any = dbRead
       .from('audit_logs')
-      .select('*, users(name, email, role), inventory(name, category)')
+      .select('*, users(name, email, role), inventory(name, category)', { count: 'exact' })
       .gte('timestamp', cutoffDate)
-      .order('timestamp', { ascending: false })
-      .limit(maxLimit);
+      .order('timestamp', { ascending: false });
+
+    if (hasPagination) {
+      const offset = (page - 1) * pageSize;
+      query = query.range(offset, offset + pageSize - 1);
+    } else {
+      query = query.limit(maxLimit);
+    }
 
     // Filter by specific day if requested (YYYY-MM-DD)
     if (day && typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day.trim())) {
@@ -168,11 +178,12 @@ export const getAuditLogs = async (req: AuthRequest, res: Response) => {
       query = query.or(`action.ilike.%${term}%,description.ilike.%${term}%`);
     }
 
-    const { data: logs, error } = await query;
+    const { data: logs, count: totalCount, error } = await query;
 
     if (error) throw error;
 
     const allLogs = logs || [];
+    const total = totalCount ?? allLogs.length;
 
     return res.status(200).json({
       status: 'success',
@@ -181,6 +192,12 @@ export const getAuditLogs = async (req: AuthRequest, res: Response) => {
       windowStart: cutoffDate,
       dailyCounts,
       categoryCounts,
+      pagination: {
+        page,
+        limit: pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize)
+      },
       data: allLogs
     });
   } catch (err: any) {

@@ -88,19 +88,27 @@ export const getBoteMetrics = async (req: Request, res: Response) => {
 // GET /api/system/simulate-scale?users=&borrowsPerUserPerMonth=&jobsPerUser=
 export const getSimulateScale = async (req: Request, res: Response) => {
   try {
-    const users = Number(req.query.users);
-    const borrowsPerUserPerMonth = Number(req.query.borrowsPerUserPerMonth ?? 2);
-    const jobsPerUser = Number(req.query.jobsPerUser ?? 1);
+    const rawUsers = Number(req.query.users);
+    const rawBorrows = Number(req.query.borrowsPerUserPerMonth ?? 2);
+    const rawJobs = Number(req.query.jobsPerUser ?? 1);
 
-    if (!Number.isFinite(users) || users < 0) {
+    if (!Number.isFinite(rawUsers) || rawUsers < 0) {
       return res.status(400).json({ status: 'error', message: 'Query param "users" is required and must be a non-negative number.' });
     }
-    if (!Number.isFinite(borrowsPerUserPerMonth) || borrowsPerUserPerMonth < 0) {
+    if (!Number.isFinite(rawBorrows) || rawBorrows < 0) {
       return res.status(400).json({ status: 'error', message: '"borrowsPerUserPerMonth" must be a non-negative number.' });
     }
-    if (!Number.isFinite(jobsPerUser) || jobsPerUser < 0) {
+    if (!Number.isFinite(rawJobs) || rawJobs < 0) {
       return res.status(400).json({ status: 'error', message: '"jobsPerUser" must be a non-negative number.' });
     }
+
+    const MAX_USERS = 1_000_000;
+    const MAX_BORROWS = 100_000;
+    const MAX_JOBS = 10_000;
+
+    const users = Math.min(rawUsers, MAX_USERS);
+    const borrowsPerUserPerMonth = Math.min(rawBorrows, MAX_BORROWS);
+    const jobsPerUser = Math.min(rawJobs, MAX_JOBS);
 
     return res.status(200).json({
       status: 'success',

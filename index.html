@@ -98,7 +98,7 @@
     </div>
 
     <!-- Auth Overlay (Login/Signup) -->
-    <div class="auth-overlay" id="auth-overlay">
+    <div class="auth-overlay" id="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-subtitle">
         <div class="auth-card glass">
             <div class="auth-header">
                 <img src="logo.png" class="auth-logo" alt="CICR Logo" width="44" height="44">
@@ -202,6 +202,18 @@
                                 autocomplete="new-password">
                             <button type="button" class="password-toggle-btn" id="signup-password-toggle"
                                 title="Toggle password visibility">
+                                <i data-lucide="eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-confirm-password">Confirm Password</label>
+                        <div class="input-icon-wrapper">
+                            <i data-lucide="lock" class="input-icon"></i>
+                            <input type="password" id="signup-confirm-password" required placeholder="Re-enter password"
+                                autocomplete="new-password">
+                            <button type="button" class="password-toggle-btn" id="signup-confirm-password-toggle"
+                                title="Toggle confirm password visibility">
                                 <i data-lucide="eye"></i>
                             </button>
                         </div>
@@ -1313,7 +1325,7 @@
 
 
     <!-- Audit Log Telemetry Detail Modal -->
-    <div class="modal-overlay" id="audit-detail-modal">
+    <div class="modal-overlay" id="audit-detail-modal" role="dialog" aria-modal="true" aria-labelledby="audit-modal-title">
         <div class="modal-content glass audit-detail-content">
             <button class="close-modal" id="close-audit-detail"><i data-lucide="x"></i></button>
             <div class="modal-header audit-detail-header">
@@ -1364,7 +1376,7 @@
     </div>
 
     <!-- Item Detail Modal -->
-    <div class="modal-overlay" id="detail-modal">
+    <div class="modal-overlay" id="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-name">
         <div class="modal-content glass">
             <button class="close-modal"><i data-lucide="x"></i></button>
             <div class="modal-header">
@@ -1423,7 +1435,7 @@
     </div>
 
     <!-- Item Delete Confirmation Modal -->
-    <div class="modal-overlay" id="delete-confirm-modal">
+    <div class="modal-overlay" id="delete-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
         <div class="modal-content glass small-modal">
             <button class="close-modal" id="close-delete-confirm"><i data-lucide="x"></i></button>
             <div class="modal-header">
@@ -1459,7 +1471,7 @@
     </div>
 
     <!-- Sign Out Confirmation Modal (Cyber Aesthetic) -->
-    <div class="modal-overlay" id="signout-confirm-modal">
+    <div class="modal-overlay" id="signout-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="signout-modal-title">
         <div class="modal-content glass signout-modal-card">
             <button class="close-modal" id="close-signout-confirm"><i data-lucide="x"></i></button>
             <div class="signout-glow-stripe"></div>
@@ -1476,7 +1488,7 @@
                     <i data-lucide="power"></i>
                 </div>
                 <div class="signout-text-col">
-                    <h2 class="signout-modal-title">TERMINATE ACTIVE SESSION?</h2>
+                    <h2 class="signout-modal-title" id="signout-modal-title">TERMINATE ACTIVE SESSION?</h2>
                     <p class="signout-modal-sub">
                         You are about to disconnect from the <strong>CICR Robotics & Hardware Vault</strong>.
                     </p>
@@ -1504,7 +1516,7 @@
     </div>
 
     <!-- Borrow Form Modal -->
-    <div class="modal-overlay" id="borrow-form-modal">
+    <div class="modal-overlay" id="borrow-form-modal" role="dialog" aria-modal="true" aria-labelledby="borrow-form-title">
         <div class="modal-content glass small-modal">
             <button class="close-modal"><i data-lucide="x"></i></button>
             <div class="modal-header">
@@ -1561,11 +1573,11 @@
     </div>
 
     <!-- Add Item Modal -->
-    <div class="modal-overlay" id="add-item-modal">
+    <div class="modal-overlay" id="add-item-modal" role="dialog" aria-modal="true" aria-labelledby="add-item-modal-title">
         <div class="modal-content glass">
             <button class="close-modal"><i data-lucide="x"></i></button>
             <div class="modal-header">
-                <h2>Add New Component</h2>
+                <h2 id="add-item-modal-title">Add New Component</h2>
                 <p>Register a new item into the CICR inventory database</p>
             </div>
             <form id="add-item-form">
@@ -1616,7 +1628,7 @@
     </div>
 
     <!-- History / Logs & Notifications Drawer -->
-    <div class="modal-overlay" id="logs-drawer">
+    <div class="modal-overlay" id="logs-drawer" role="dialog" aria-modal="true" aria-labelledby="notif-drawer-title">
         <div class="modal-content glass drawer notif-drawer">
             <button class="close-modal" id="close-logs-drawer"><i data-lucide="x"></i></button>
             <div class="modal-header notif-drawer-header">
@@ -1670,11 +1682,11 @@
     </div>
 
     <!-- About Modal -->
-    <div class="modal-overlay" id="about-modal">
+    <div class="modal-overlay" id="about-modal" role="dialog" aria-modal="true" aria-labelledby="about-modal-title">
         <div class="modal-content glass">
             <button class="close-modal"><i data-lucide="x"></i></button>
             <div class="modal-header">
-                <h2>About CICR Cell</h2>
+                <h2 id="about-modal-title">About CICR Cell</h2>
                 <p>Creative & Innovative Cell in Robotics</p>
             </div>
             <div class="modal-body">
@@ -1709,7 +1721,7 @@
 
 
     <!-- Password Reset Modal (Direct Self-Service Reset Synced with Database - No OTP) -->
-    <div class="modal-overlay" id="reset-password-modal">
+    <div class="modal-overlay" id="reset-password-modal" role="dialog" aria-modal="true" aria-labelledby="reset-modal-subtitle">
         <div class="modal-content glass small-modal reset-password-card">
             <button type="button" class="close-modal"
                 onclick="if (window.closePasswordResetModal) window.closePasswordResetModal(); else document.getElementById('reset-password-modal')?.classList.remove('active');"><i
@@ -1795,7 +1807,7 @@
     </div>
 
     <!-- Edit Profile Modal (Synchronized with Backend & Institutional Security Policy) -->
-    <div class="modal-overlay" id="edit-profile-modal">
+    <div class="modal-overlay" id="edit-profile-modal" role="dialog" aria-modal="true" aria-labelledby="edit-profile-modal-title">
         <div class="modal-content glass reset-password-card">
             <button type="button" class="close-modal" id="close-edit-profile-modal"
                 onclick="window.closeProfileEditModal && window.closeProfileEditModal()"><i
@@ -1806,7 +1818,7 @@
                     <i data-lucide="user-cog" class="text-cyan"></i>
                     <span>OPERATOR IDENTITY MATRIX</span>
                 </div>
-                <h2><i data-lucide="user-check" class="text-cyan"></i> Edit Profile</h2>
+                <h2 id="edit-profile-modal-title"><i data-lucide="user-check" class="text-cyan"></i> Edit Profile</h2>
                 <p>Update personal details & profile picture. Institutional records are locked.</p>
             </div>
 
@@ -1939,7 +1951,7 @@
     </div>
 
     <!-- Return Quantity Selection Modal (Supports Partial & Full Returns with Admin Verification) -->
-    <div class="modal-overlay" id="return-qty-modal">
+    <div class="modal-overlay" id="return-qty-modal" role="dialog" aria-modal="true" aria-labelledby="return-modal-subtitle">
         <div class="modal-content glass small-modal" style="max-width: 440px;">
             <button type="button" class="close-modal"
                 onclick="document.getElementById('return-qty-modal')?.classList.remove('active');"><i
@@ -2007,7 +2019,7 @@
     </div>
 
     <!-- Consolidated Bulk Return Modal ("Return Everything in 1 Go") -->
-    <div class="modal-overlay" id="bulk-return-modal">
+    <div class="modal-overlay" id="bulk-return-modal" role="dialog" aria-modal="true" aria-labelledby="bulk-return-modal-title">
         <div class="modal-content glass bulk-return-modal-card" style="max-width: 620px; width: 95%;">
             <button type="button" class="close-modal" id="close-bulk-return-modal"><i data-lucide="x"></i></button>
 
@@ -2017,7 +2029,7 @@
                     <i data-lucide="layers" style="width:13px; height:13px;"></i>
                     <span>CONSOLIDATED HARDWARE RETURN MANIFEST</span>
                 </div>
-                <h2>Return Everything in 1 Go</h2>
+                <h2 id="bulk-return-modal-title">Return Everything in 1 Go</h2>
                 <p>Review all components currently issued to you and select return quantities in a single unified
                     dispatch.</p>
             </div>
@@ -2084,7 +2096,7 @@
     </div>
 
     <!-- Admin User Profile Inspector Modal -->
-    <div class="modal-overlay" id="admin-user-profile-modal" style="display: none;">
+    <div class="modal-overlay" id="admin-user-profile-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="inspector-user-name">
         <div class="modal-card modal-profile-inspector glass glow-border">
             <button class="modal-close-btn" id="close-user-profile-modal" title="Close Profile">&times;</button>
 
@@ -2154,7 +2166,7 @@
     </div>
 
     <!-- Confirm Delete Ledger Record Modal -->
-    <div class="modal-overlay" id="delete-ledger-confirm-modal" style="display: none;">
+    <div class="modal-overlay" id="delete-ledger-confirm-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="delete-ledger-modal-title">
         <div class="modal-card modal-delete-confirm glass glow-border">
             <button class="modal-close-btn" id="btn-close-delete-ledger-x" title="Close">&times;</button>
             <div class="modal-header-cyber">
@@ -2162,7 +2174,7 @@
                     <i data-lucide="alert-triangle" class="text-pink"></i>
                     <span class="text-pink">ADMIN PURGE ACTION</span>
                 </div>
-                <h2>Delete Ledger Record</h2>
+                <h2 id="delete-ledger-modal-title">Delete Ledger Record</h2>
                 <p>Are you sure you want to permanently delete this checkout / return record from the database?</p>
             </div>
             <div class="delete-record-summary" id="delete-ledger-record-summary">

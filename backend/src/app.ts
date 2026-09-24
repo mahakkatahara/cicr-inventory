@@ -8,6 +8,8 @@ import borrowRoutes from './modules/borrow/borrow.routes';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import { dbRead, dbWrite } from './config/database';
 import { buildHealthPayload } from './config/healthMonitor';
+import { authenticateToken, requireAdmin } from './middleware/auth.middleware';
+import { adminLimiter } from './middleware/rateLimit';
 dotenv.config();
 
 export const supabase = dbWrite;
@@ -62,8 +64,11 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.status(statusCode).json(payload);
 });
 
-// SMTP diagnostics endpoint
-app.get('/api/smtp-debug', async (req: Request, res: Response) => {
+// SMTP diagnostics endpoint (Protected - Admin only)
+app.get('/api/smtp-debug', adminLimiter, authenticateToken, requireAdmin, async (req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ status: 'error', message: 'SMTP debug diagnostics endpoint is disabled in production environments.' });
+  }
   const net = await import('net');
   const dns = await import('dns');
 

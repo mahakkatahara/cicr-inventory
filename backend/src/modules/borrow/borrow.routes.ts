@@ -19,8 +19,8 @@ import { authenticateToken, requireAdmin } from '../../middleware/auth.middlewar
 
 const router = Router();
 
-router.get('/admins', getAdmins);
-router.post('/', authenticateToken, borrowItem);
+router.get('/admins', authenticateToken, getAdmins);
+router.post('/', authenticateToken, requireAdmin, borrowItem);
 router.post('/request', authenticateToken, createHardwareRequestHandler);
 router.get('/requests', authenticateToken, getHardwareRequestsHandler);
 router.post('/requests/:id/approve', authenticateToken, requireAdmin, approveHardwareRequestHandler);

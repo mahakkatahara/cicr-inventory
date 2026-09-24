@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import './style.css';
 import type { InventoryItem, ActivityLog, RequestRecord, BorrowRecord } from './types';
+import { api, SESSION_EXPIRED_EVENT } from './api';
 
 // Global declarations for CDN libraries
 declare const lucide: {
@@ -2099,6 +2100,13 @@ class ModalManager {
             content.addEventListener('click', (e) => e.stopPropagation());
         });
 
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const activeModals = document.querySelectorAll('.modal-overlay.active');
+                activeModals.forEach(modal => this.close(modal.id));
+            }
+        });
+
         const addForm = document.getElementById('add-item-form') as HTMLFormElement;
         if (addForm) {
             addForm.addEventListener('submit', (e) => {
@@ -2325,18 +2333,95 @@ class ModalManager {
         return false;
     }
 
+    private static focusHistory: Map<string, HTMLElement> = new Map();
+    private static keyListeners: Map<string, (e: KeyboardEvent) => void> = new Map();
+
     static open(modalId: string) {
-        document.getElementById(modalId)!.classList.add('active');
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+
+        if (document.activeElement instanceof HTMLElement) {
+            this.focusHistory.set(modalId, document.activeElement);
+        }
+
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+
+        const focusables = Array.from(
+            modal.querySelectorAll<HTMLElement>(
+                'input:not([type="hidden"]), select, textarea, button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+            )
+        ).filter(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+
+        if (focusables.length > 0) {
+            setTimeout(() => focusables[0].focus(), 40);
+        }
+
+        const trapHandler = (e: KeyboardEvent) => {
+            if (e.key === 'Tab') {
+                const currentFocusables = Array.from(
+                    modal.querySelectorAll<HTMLElement>(
+                        'input:not([type="hidden"]), select, textarea, button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+                    )
+                ).filter(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+
+                if (!currentFocusables.length) return;
+                const first = currentFocusables[0];
+                const last = currentFocusables[currentFocusables.length - 1];
+
+                if (e.shiftKey) {
+                    if (document.activeElement === first) {
+                        last.focus();
+                        e.preventDefault();
+                    }
+                } else {
+                    if (document.activeElement === last) {
+                        first.focus();
+                        e.preventDefault();
+                    }
+                }
+            }
+        };
+
+        const oldHandler = this.keyListeners.get(modalId);
+        if (oldHandler) modal.removeEventListener('keydown', oldHandler);
+        this.keyListeners.set(modalId, trapHandler);
+        modal.addEventListener('keydown', trapHandler);
     }
 
     static close(modalId: string) {
-        document.getElementById(modalId)!.classList.remove('active');
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+            const handler = this.keyListeners.get(modalId);
+            if (handler) {
+                modal.removeEventListener('keydown', handler);
+                this.keyListeners.delete(modalId);
+            }
+        }
+
+        const activeModals = document.querySelectorAll('.modal-overlay.active');
+        if (!activeModals.length) {
+            document.body.style.overflow = '';
+        }
+
+        const prevElement = this.focusHistory.get(modalId);
+        if (prevElement && typeof prevElement.focus === 'function') {
+            prevElement.focus();
+            this.focusHistory.delete(modalId);
+        }
     }
 
     static closeAll() {
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.classList.remove('active');
         });
+        document.body.style.overflow = '';
+        this.focusHistory.forEach(el => {
+            if (el && typeof el.focus === 'function') el.focus();
+        });
+        this.focusHistory.clear();
+        this.keyListeners.clear();
         selectedItem = null;
     }
 
@@ -3497,52 +3582,57 @@ class ModalManager {
         };
 
         try {
-            const res = await fetch(`${API_BASE}/borrow/request`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(requestPayload)
-            });
-
-            const resData = await res.json().catch(() => ({})) as any;
-            if (resData?.data?.id) {
-                newReq.id = resData.data.id;
+            // Pre-checkout live stock re-validation (Task 18)
+            const freshRes = await api.inventory.getItemById(selectedItem.id);
+            if (freshRes.status === 'success' && freshRes.data) {
+                const liveItem = freshRes.data;
+                if (typeof liveItem.available_quantity === 'number' && liveItem.available_quantity < qty) {
+                    ToastManager.show(
+                        'Out of Stock',
+                        `Insufficient stock: ${qty}x requested, but only ${liveItem.available_quantity} available in vault.`,
+                        'warning'
+                    );
+                    return;
+                }
             }
 
-            // Always keep in local requests store so it is instantly reflected on this client, deduplicating against any existing match
-            requests = requests.filter(r => r.id !== newReq.id && !(r.status === 'PENDING' && r.itemId === newReq.itemId && r.qty === newReq.qty && r.purpose === newReq.purpose));
-            requests.unshift(newReq);
-            DatabaseManager.save();
+            const resData = await api.borrow.createRequest(requestPayload);
 
-            (document.getElementById('borrow-form') as HTMLFormElement).reset();
-            this.close('borrow-form-modal');
+            if (resData.status === 'success' || resData.data?.id) {
+                if (resData?.data?.id) {
+                    newReq.id = resData.data.id;
+                }
 
-            ToastManager.show(
-                'Request Transmitted',
-                `Issue request for ${qty}x ${selectedItem.name} submitted for Admin authorization.`,
-                'success'
-            );
-            DatabaseManager.addLog('borrow', `<span>${borrowerName}</span> requested ${qty}x <span>${selectedItem.name}</span> for '${purpose}'.`);
-            AdminManager.loadHardwareRequests(true);
-            DatabaseManager.updateNotificationBadges();
-            await DatabaseManager.syncFromBackend();
+                requests = requests.filter(r => r.id !== newReq.id && !(r.status === 'PENDING' && r.itemId === newReq.itemId && r.qty === newReq.qty && r.purpose === newReq.purpose));
+                requests.unshift(newReq);
+                DatabaseManager.save();
+
+                (document.getElementById('borrow-form') as HTMLFormElement).reset();
+                this.close('borrow-form-modal');
+
+                ToastManager.show(
+                    'Request Transmitted',
+                    `Issue request for ${qty}x ${selectedItem.name} submitted for Admin authorization.`,
+                    'success'
+                );
+                DatabaseManager.addLog('borrow', `<span>${borrowerName}</span> requested ${qty}x <span>${selectedItem.name}</span> for '${purpose}'.`);
+                AdminManager.loadHardwareRequests(true);
+                DatabaseManager.updateNotificationBadges();
+                await DatabaseManager.syncFromBackend();
+            } else {
+                ToastManager.show(
+                    'Request Failed',
+                    resData.message || 'Failed to transmit request to server. Please check your connection and retry.',
+                    'error'
+                );
+            }
         } catch (e: any) {
             console.error('Request API error:', e);
-            // On offline/failover, save locally
-            requests = requests.filter(r => r.id !== newReq.id && !(r.status === 'PENDING' && r.itemId === newReq.itemId && r.qty === newReq.qty && r.purpose === newReq.purpose));
-            requests.unshift(newReq);
-            DatabaseManager.save();
-            (document.getElementById('borrow-form') as HTMLFormElement).reset();
-            this.close('borrow-form-modal');
             ToastManager.show(
-                'Request Transmitted',
-                `Issue request for ${qty}x ${selectedItem.name} queued for Admin authorization.`,
-                'success'
+                'Transmission Error',
+                'Failed to transmit request to server. Please check your connection and retry.',
+                'error'
             );
-            DatabaseManager.addLog('borrow', `<span>${borrowerName}</span> requested ${qty}x <span>${selectedItem.name}</span> for '${purpose}'.`);
-            AdminManager.loadHardwareRequests(true);
         } finally {
             this.isSubmittingBorrow = false;
             if (submitBtn) {
@@ -4019,6 +4109,7 @@ class AuthManager {
     private static signupEnrollmentInp: HTMLInputElement;
     private static signupBatchInp: HTMLInputElement;
     private static signupPassInp: HTMLInputElement;
+    private static signupConfirmPassInp: HTMLInputElement;
     private static signupErr: HTMLElement;
     private static signupSuccess: HTMLElement;
 
@@ -4042,6 +4133,7 @@ class AuthManager {
         this.signupEnrollmentInp = document.getElementById('signup-enrollment') as HTMLInputElement;
         this.signupBatchInp = document.getElementById('signup-batch') as HTMLInputElement;
         this.signupPassInp = document.getElementById('signup-password') as HTMLInputElement;
+        this.signupConfirmPassInp = document.getElementById('signup-confirm-password') as HTMLInputElement;
         this.signupErr = document.getElementById('signup-error')!;
         this.signupSuccess = document.getElementById('signup-success')!;
 
@@ -4258,6 +4350,22 @@ class AuthManager {
                 }
             });
         }
+
+        const signupConfirmToggle = document.getElementById('signup-confirm-password-toggle');
+        const signupConfirmPass = document.getElementById('signup-confirm-password') as HTMLInputElement;
+        if (signupConfirmToggle && signupConfirmPass) {
+            signupConfirmToggle.addEventListener('click', () => {
+                const currentType = signupConfirmPass.getAttribute('type');
+                const newType = currentType === 'password' ? 'text' : 'password';
+                signupConfirmPass.setAttribute('type', newType);
+
+                const icon = signupConfirmToggle.querySelector('i')!;
+                if (icon) {
+                    icon.setAttribute('data-lucide', newType === 'password' ? 'eye' : 'eye-off');
+                    lucide.createIcons();
+                }
+            });
+        }
     }
 
     private static async checkAuth() {
@@ -4291,13 +4399,9 @@ class AuthManager {
         }
 
         try {
-            const res = await fetch(`${API_BASE}/auth/profile`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const result = await res.json();
-                const user = result.data;
+            const res = await api.auth.getProfile();
+            if (res.status === 'success' && res.data) {
+                const user = res.data;
                 if (user && user.status === 'APPROVED') {
                     this.loginSuccess(user.name, user.role, user);
                     const welcomedKey = 'cicr_welcomed_' + (user.name || 'user');
@@ -4307,7 +4411,7 @@ class AuthManager {
                     }
                     return;
                 }
-            } else if (res.status === 401 || res.status === 403) {
+            } else if (res.status === 'error' && (res.message?.includes('401') || res.message?.includes('Unauthorized'))) {
                 this.handleLogout();
                 return;
             }
@@ -4320,7 +4424,7 @@ class AuthManager {
         }
     }
 
-    private static showLoginOverlay() {
+    public static showLoginOverlay() {
         this.globalNavbar.style.display = 'none';
         this.authOverlay.classList.remove('hidden');
         this.authOverlay.style.display = 'flex';
@@ -4615,6 +4719,7 @@ class AuthManager {
         const enrollment = (this.signupEnrollmentInp ? this.signupEnrollmentInp.value : '').trim();
         const batch = (this.signupBatchInp ? this.signupBatchInp.value : '').trim();
         const password = this.signupPassInp ? this.signupPassInp.value : '';
+        const confirmPassword = this.signupConfirmPassInp ? this.signupConfirmPassInp.value : '';
 
         this.signupErr.style.display = 'none';
         this.signupSuccess.style.display = 'none';
@@ -4654,23 +4759,23 @@ class AuthManager {
             return;
         }
 
+        if (password !== confirmPassword) {
+            this.showSignupError("Passwords do not match. Please re-enter your password confirmation.");
+            return;
+        }
+
         try {
-            const res = await fetch(`${API_BASE}/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name,
-                    email,
-                    username,
-                    roll_number: enrollment,
-                    batch,
-                    password
-                }),
+            const data = await api.auth.register({
+                name,
+                email,
+                username,
+                roll_number: enrollment,
+                batch,
+                password,
+                confirmPassword
             });
 
-            const data = await res.json();
-
-            if (res.ok || data.status === 'success') {
+            if (data.status === 'success' || data.status === 'pending_approval') {
                 this.signupSuccess.innerText = data.message || "Registration request submitted! Your account is pending CICR Admin approval.";
                 this.signupSuccess.style.display = 'block';
 
@@ -9371,6 +9476,12 @@ document.addEventListener('DOMContentLoaded', () => {
     DatabaseManager.updateNotificationBadges();
     DatabaseManager.startAutoSync(45000);
     lucide.createIcons();
+
+    window.addEventListener(SESSION_EXPIRED_EVENT, (e: any) => {
+        const message = e.detail?.message || 'Your session has expired. Please sign in again to continue.';
+        ToastManager.show('Session Expired', message, 'warning');
+        AuthManager.showLoginOverlay();
+    });
 
     // Global mouse-coordinate spotlight tracker for interactive cyber gridlines (requestAnimationFrame throttled)
     let mouseMoveTicking = false;

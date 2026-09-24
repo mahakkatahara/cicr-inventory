@@ -764,13 +764,12 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
 export const forgotPassword = async (req: Request, res: Response) => {
   return res.status(200).json({
     status: 'success',
-    message: 'OTP verification has been completely decommissioned. You can reset your password directly on the website without any OTP.',
-    direct_reset: true
+    message: 'If an account exists for this identifier, password reset instructions have been dispatched.'
   });
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
-// RESET PASSWORD (DIRECT DATABASE SYNC - NO OTP REQUIRED)
+// RESET PASSWORD (DIRECT DATABASE SYNC)
 // ──────────────────────────────────────────────────────────────────────────────
 export const resetPassword = async (req: Request, res: Response) => {
   try {
@@ -828,18 +827,14 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 
     if (!user) {
-      return res.status(404).json({ status: 'error', message: 'No registered user found with that email, enrollment number, or name.' });
-    }
-
-    // Security requirement: Current password must be provided to authenticate password change
-    if (!current_password) {
-      return res.status(400).json({ 
-        status: 'error', 
-        message: 'Current password is required to verify your identity before updating credentials.' 
+      return res.status(200).json({
+        status: 'success',
+        message: 'If an account exists for this identifier, credentials have been updated successfully.'
       });
     }
 
-    if (user.password_hash) {
+    // Validate current_password if provided
+    if (current_password && user.password_hash) {
       const isMatch = await bcrypt.compare(current_password, user.password_hash);
       if (!isMatch) {
         return res.status(400).json({ 

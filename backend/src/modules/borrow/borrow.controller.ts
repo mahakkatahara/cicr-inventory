@@ -529,24 +529,28 @@ export const returnItem = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// GET /api/borrow/history (Borrow History with caching)
+// GET /api/borrow/history (Borrow History with offset pagination & caching)
 export const getBorrowHistory = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const userRole = req.user?.role;
     const force = req.query.force === 'true';
 
-    const cacheKey = `cicr:cache:borrow:history:${userRole === 'ADMIN' ? 'all' : (userId || 'anon')}`;
+    const page = Math.max(1, parseInt(req.query.page as string || '1', 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(req.query.limit as string || '50', 10) || 50));
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined;
+
+    const cacheKey = `cicr:cache:borrow:history:${userRole === 'ADMIN' ? 'all' : (userId || 'anon')}:${page}:${limitNum}`;
     if (!force) {
-      const cached = await cacheGetJSON<{ status: string; count: number; data: any[] }>(cacheKey);
+      const cached = await cacheGetJSON<{ status: string; count: number; data: any[]; pagination?: any }>(cacheKey);
       if (cached) {
         return res.status(200).json(cached);
       }
     }
 
-    let query = dbRead
+    let query: any = dbRead
       .from('borrow_records')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('borrowed_at', { ascending: false });
 
     // Members see only their own history; Admins see all
@@ -564,7 +568,12 @@ export const getBorrowHistory = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const { data: records, error } = await query;
+    if (hasPagination) {
+      const offset = (page - 1) * limitNum;
+      query = query.range(offset, offset + limitNum - 1);
+    }
+
+    const { data: records, count: totalCount, error } = await query;
     if (error) throw error;
 
     // Resolve related users and items manually
@@ -589,7 +598,18 @@ export const getBorrowHistory = async (req: AuthRequest, res: Response) => {
       inventory: itemMap[r.inventory_id] || null
     }));
 
-    const payload = { status: 'success', count: history.length, data: history };
+    const total = totalCount ?? history.length;
+    const payload = {
+      status: 'success',
+      count: history.length,
+      data: history,
+      pagination: {
+        page,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    };
     await cacheSetJSON(cacheKey, payload, BORROW_HISTORY_CACHE_TTL);
 
     return res.status(200).json(payload);
